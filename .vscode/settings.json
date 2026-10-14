@@ -1,0 +1,10 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "printf": true,
+        "git config": true,
+        "true": true,
+        "java": true
+    },
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "automatic"
+}

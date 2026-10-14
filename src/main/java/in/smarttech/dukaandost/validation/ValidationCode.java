@@ -1,0 +1,14 @@
+package in.smarttech.dukaandost.validation;
+
+public enum ValidationCode {
+    MISSING_TOTAL,
+    NEGATIVE_TOTAL,
+    NEGATIVE_QUANTITY,
+    NEGATIVE_UNIT_PRICE,
+    NEGATIVE_LINE_TOTAL,
+    NON_POSITIVE_ADVANCE,
+    INVALID_PHONE,
+    ITEM_TOTAL_MISMATCH,
+    DUE_DATE_IN_PAST,
+    ADVANCE_EXCEEDS_TOTAL
+}
