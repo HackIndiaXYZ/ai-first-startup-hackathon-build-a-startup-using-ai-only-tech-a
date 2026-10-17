@@ -1,7 +1,7 @@
 # Voice Order & Dues Tracker
 
 **Team:** Smart Tech  
-**Status:** Planning
+**Status:** Backend MVP and demo UI in progress
 
 ## Problem
 
@@ -24,7 +24,22 @@ A web app that turns a typed transcript or voice note into an editable order dra
 
 ## Current status
 
-The project idea and requirements are being prepared. The MVP has not been implemented yet.
+The Spring Boot backend and a lightweight browser demo are available. Open the application at
+`http://localhost:8080/` to enter a transcript, review extracted order details, confirm an order,
+record payments, and view outstanding dues. The demo uses the existing `/api/drafts` and
+`/api/orders` routes and does not send WhatsApp or payment messages automatically.
+
+Run the backend with:
+
+```bash
+mvn spring-boot:run
+```
+
+Run the tests with:
+
+```bash
+mvn test
+```
 
 ## AI usage
 

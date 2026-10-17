@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;

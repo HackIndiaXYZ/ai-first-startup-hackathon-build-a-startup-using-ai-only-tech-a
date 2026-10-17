@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#245c4f">
+    <title>Dukaan Dost | Order desk</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+    <header class="hero">
+        <div>
+            <p class="eyebrow">DUKAAN DOST</p>
+            <h1>Your order desk, made simple.</h1>
+            <p class="hero-copy">Turn a Hindi, Hinglish, or English note into a reviewed order.</p>
+        </div>
+        <div class="hero-mark" aria-hidden="true">DD</div>
+    </header>
+
+    <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
+
+    <section class="card capture-card" aria-labelledby="capture-heading">
+        <div class="section-heading">
+            <div>
+                <p class="step">STEP 1</p>
+                <h2 id="capture-heading">Capture an order</h2>
+            </div>
+            <span class="quiet">Text for now</span>
+        </div>
+        <label for="transcript">What did the customer say?</label>
+        <textarea id="transcript" rows="5"
+                  placeholder="Example: Verma ji ko 3 packet cheeni 150 each, total 450. 100 advance de diye."></textarea>
+        <div class="form-actions">
+            <button id="create-draft" class="primary">Extract order</button>
+            <button id="update-draft" class="secondary" hidden>Rerun extraction</button>
+        </div>
+        <p class="hint">You will review everything before it becomes an order.</p>
+    </section>
+
+    <section id="draft-section" class="card" aria-labelledby="review-heading" hidden>
+        <div class="section-heading">
+            <div>
+                <p class="step">STEP 2</p>
+                <h2 id="review-heading">Review the draft</h2>
+            </div>
+            <span id="draft-status" class="status">—</span>
+        </div>
+        <div id="review-alert" class="review-alert" hidden></div>
+        <div class="summary-grid">
+            <div class="summary-item"><span>Customer</span><strong id="customer-name">—</strong></div>
+            <div class="summary-item"><span>Phone</span><strong id="customer-phone">—</strong></div>
+            <div class="summary-item"><span>Order date</span><strong id="order-date">—</strong></div>
+            <div class="summary-item"><span>Due date</span><strong id="due-date">—</strong></div>
+            <div class="summary-item"><span>Total</span><strong id="order-total">—</strong></div>
+            <div class="summary-item"><span>Advance</span><strong id="advance-amount">—</strong></div>
+        </div>
+        <div class="items-block">
+            <h3>Items</h3>
+            <div id="items-list" class="items-list"></div>
+        </div>
+        <div id="review-notes" class="notes" hidden>
+            <h3>Review notes</h3>
+            <ul id="review-notes-list"></ul>
+        </div>
+        <label id="acknowledgement-row" class="checkbox-row" hidden>
+            <input id="acknowledged-review" type="checkbox">
+            <span>I have checked the extracted details and understand the review notes.</span>
+        </label>
+        <div class="form-actions">
+            <button id="confirm-draft" class="primary">Confirm order</button>
+        </div>
+    </section>
+
+    <section id="payment-section" class="card payment-card" aria-labelledby="payment-heading" hidden>
+        <div class="section-heading">
+            <div>
+                <p class="step">STEP 3</p>
+                <h2 id="payment-heading">Record a payment</h2>
+            </div>
+            <span class="quiet">No automatic sending</span>
+        </div>
+        <div class="payment-summary">
+            <span id="payment-customer">—</span>
+            <strong id="payment-balance">—</strong>
+        </div>
+        <div class="two-column">
+            <div>
+                <label for="payment-amount">Amount paid</label>
+                <input id="payment-amount" type="number" min="0.01" step="0.01" inputmode="decimal"
+                       placeholder="0.00">
+            </div>
+            <div>
+                <label for="payment-note">Note (optional)</label>
+                <input id="payment-note" type="text" maxlength="500" placeholder="Cash, UPI, etc.">
+            </div>
+        </div>
+        <button id="record-payment" class="primary">Save payment</button>
+    </section>
+
+    <section class="card dues-card" aria-labelledby="dues-heading">
+        <div class="section-heading">
+            <div>
+                <p class="step">YOUR LEDGER</p>
+                <h2 id="dues-heading">Outstanding dues</h2>
+            </div>
+            <button id="refresh-dues" class="icon-button" title="Refresh outstanding dues" aria-label="Refresh outstanding dues">↻</button>
+        </div>
+        <div id="dues-loading" class="empty-state">Loading dues…</div>
+        <div id="dues-list" class="dues-list" hidden></div>
+    </section>
+
+    <footer>Review carefully before confirming. Dukaan Dost never sends a payment or WhatsApp message automatically.</footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
