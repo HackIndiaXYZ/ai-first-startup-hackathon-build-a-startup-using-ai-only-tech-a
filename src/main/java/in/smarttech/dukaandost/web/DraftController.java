@@ -51,6 +51,12 @@ public class DraftController {
         return response(workflowService.update(id, request.transcript()));
     }
 
+    @PostMapping("/{id}/extract")
+    public DraftResponse extract(
+            @PathVariable UUID id, @Valid @RequestBody(required = false) ExtractRequest request) {
+        return response(workflowService.retryExtraction(id, request == null ? null : request.transcript()));
+    }
+
     @PostMapping("/{id}/confirm")
     public ConfirmationResponse confirm(
             @PathVariable UUID id, @Valid @RequestBody ConfirmRequest request) {
@@ -77,6 +83,9 @@ public class DraftController {
     }
 
     public record TranscriptRequest(@NotBlank String transcript) {
+    }
+
+    public record ExtractRequest(String transcript) {
     }
 
     public record ConfirmRequest(@NotNull Boolean acknowledgedReview) {

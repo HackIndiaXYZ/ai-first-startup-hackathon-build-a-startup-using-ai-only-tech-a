@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.smarttech.dukaandost.domain.OrderEntryType;
 import in.smarttech.dukaandost.validation.ValidationCode;
+import in.smarttech.dukaandost.validation.ExtractedOrder;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -106,6 +107,21 @@ class ExtractionServiceTest {
         assertThat(result.validationResult().normalizedOrder().dueDate().toString()).isEqualTo("2026-10-16");
         assertThat(validationService.prepareForConfirmation(result.validationResult().normalizedOrder())
                 .normalizedOrder().items().getFirst().description()).isEqualTo("Previous balance");
+    }
+
+    @Test
+    void acceptsPlainIsoDatesForDueDateAndAdvancePaidAt() {
+        String response = BASE_RESPONSE
+                .replace("\"dueDate\": null", "\"dueDate\": \"2026-10-20\"")
+                .replace("\"advanceAmount\": null", "\"advanceAmount\": 100")
+                .replace("\"advancePaidAt\": null", "\"advancePaidAt\": \"2026-10-15\"");
+
+        ExtractedOrder order = serviceWithResponse(response)
+                .extract("Verma ji ke 3 packet cheeni 150 each, total 400 likh do.")
+                .validationResult().normalizedOrder();
+
+        assertThat(order.dueDate().toString()).isEqualTo("2026-10-20");
+        assertThat(order.advancePaidAt().toString()).isEqualTo("2026-10-15");
     }
 
     private ExtractionService serviceWithResponse(String json) {

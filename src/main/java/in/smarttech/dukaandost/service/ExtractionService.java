@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,8 @@ public class ExtractionService {
             customerName, customerPhone, sourceNoteLanguage, preferredReminderLanguage,
             entryType, orderDate, dueDate, total, currency, items, advanceAmount,
             advancePaidAt, advanceNote, multipleCustomers, reviewRequired, reviewNotes.
-            Use ISO-8601 dates/timestamps, decimal numbers, null for unknown scalar values,
+            dueDate, orderDate and advancePaidAt must each be an ISO date yyyy-MM-dd or null,
+            resolved from the provided current date; “kal” means tomorrow. Use decimal numbers, null for unknown scalar values,
             and [] for an unknown or absent items list. entryType is ORDER or PREVIOUS_BALANCE.
             Each item has description, quantity, unit, unitPrice, and lineTotal.
 
@@ -54,6 +56,12 @@ public class ExtractionService {
             If the note describes only an existing amount owed, set entryType=PREVIOUS_BALANCE,
             preserve that amount in total, leave items empty, set reviewRequired=true, and explain
             that the owner should review it as a previous balance.
+            Use null for any scalar that is not explicitly stated (customer, quantity, price,
+            total, dates); a missing customer name or total must stay null. Always add a
+            reviewNotes entry asking the owner to confirm any “kal” or weekday due date.
+            An order date (when the order was placed or mentioned) is never a due date.
+            Words like “baaki”, “udhaar” and “hisaab” indicate payment context only when a clear
+            amount is stated; otherwise leave amounts null and add a review note.
             Do not use reviewRequired as a substitute for checking the extracted amounts.
             """;
 
@@ -61,6 +69,9 @@ public class ExtractionService {
     private final ObjectMapper objectMapper;
     private final ValidationService validationService;
     private final Clock clock;
+
+    @Value("${app.extraction.mode:gemini}")
+    private String extractionMode;
 
     public ExtractionService(
             ChatClient.Builder chatClientBuilder,
@@ -85,16 +96,17 @@ public class ExtractionService {
         LocalDate referenceDate = LocalDate.now(clock);
         String systemPrompt = STRUCTURED_RESPONSE_INSTRUCTIONS
                 + "\nReference date in Asia/Kolkata: " + referenceDate + ".";
-        String rawContent = chatClient.prompt()
-                .system(systemPrompt)
-                .user(transcript)
-                .options(OpenAiChatOptions.builder().temperature(0.0).build())
-                .call()
-                .content();
+        String rawContent = "fake".equalsIgnoreCase(extractionMode)
+                ? fakeResponse()
+                : chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(transcript)
+                        .options(OpenAiChatOptions.builder().temperature(0.0).build())
+                        .call()
+                        .content();
         JsonNode rawResponse = parseResponse(rawContent);
 
         boolean multipleCustomers = rawResponse.path("multipleCustomers").asBoolean(false);
-        boolean modelReviewRequired = rawResponse.path("reviewRequired").asBoolean(false);
         LinkedHashSet<String> reviewNotes = readReviewNotes(rawResponse.path("reviewNotes"));
 
         ExtractedOrder extractedOrder = mapOrder(rawResponse, transcript);
@@ -116,14 +128,10 @@ public class ExtractionService {
         for (ValidationIssue issue : validationResult.issues()) {
             reviewNotes.add(issue.message());
         }
-        boolean reviewRequired = modelReviewRequired
-                || multipleCustomers
+        boolean reviewRequired = multipleCustomers
                 || extractedOrder.entryType() == OrderEntryType.PREVIOUS_BALANCE
                 || resolvedDueDate != null
                 || !validationResult.issues().isEmpty();
-        if (modelReviewRequired && reviewNotes.isEmpty()) {
-            reviewNotes.add("Review the extracted order details before confirmation.");
-        }
 
         return new ExtractionResult(validationResult, rawResponse, multipleCustomers,
                 reviewRequired, List.copyOf(reviewNotes));
@@ -131,7 +139,7 @@ public class ExtractionService {
 
     private JsonNode parseResponse(String rawContent) {
         try {
-            JsonNode parsed = objectMapper.readTree(rawContent);
+            JsonNode parsed = objectMapper.readTree(stripCodeFence(rawContent));
             if (parsed == null || !parsed.isObject()) {
                 throw new IllegalStateException("Model response must be a JSON object.");
             }
@@ -139,6 +147,44 @@ public class ExtractionService {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Model returned invalid structured JSON.", exception);
         }
+    }
+
+    private static String stripCodeFence(String content) {
+        if (content == null) {
+            return "";
+        }
+        String trimmed = content.strip();
+        if (trimmed.startsWith("```")) {
+            int firstNewline = trimmed.indexOf('\n');
+            int lastFence = trimmed.lastIndexOf("```");
+            if (firstNewline > 0 && lastFence > firstNewline) {
+                return trimmed.substring(firstNewline + 1, lastFence).strip();
+            }
+        }
+        return trimmed;
+    }
+
+    private static String fakeResponse() {
+        return """
+                {
+                  "customerName": null,
+                  "customerPhone": null,
+                  "sourceNoteLanguage": null,
+                  "preferredReminderLanguage": null,
+                  "entryType": "ORDER",
+                  "orderDate": null,
+                  "dueDate": null,
+                  "total": null,
+                  "currency": "INR",
+                  "items": [],
+                  "advanceAmount": null,
+                  "advancePaidAt": null,
+                  "advanceNote": null,
+                  "multipleCustomers": false,
+                  "reviewRequired": true,
+                  "reviewNotes": ["Fake extraction mode is enabled; enter order details manually."]
+                }
+                """;
     }
 
     private ExtractedOrder mapOrder(JsonNode rawResponse, String transcript) {

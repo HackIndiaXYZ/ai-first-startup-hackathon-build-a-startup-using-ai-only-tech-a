@@ -45,6 +45,18 @@ mvn test
 
 AI is being used to support research, requirements planning, and product development. The team will document the tools and prompts actually used during the build.
 
+Extraction uses Gemini through the Spring AI OpenAI-compatible client by default. Set `GEMINI_API_KEY` in the environment. To use the real OpenAI endpoint instead, set these application properties:
+
+```properties
+app.extraction.mode=openai
+spring.ai.openai.base-url=https://api.openai.com
+spring.ai.openai.chat.completions-path=/v1/chat/completions
+spring.ai.openai.api-key=${OPENAI_API_KEY}
+spring.ai.openai.chat.options.model=${OPENAI_MODEL:gpt-4o-mini}
+```
+
+For a deterministic no-provider demo, set `app.extraction.mode=fake`; fake mode is off by default. The configured model client allows two attempts with a 250 ms backoff, bounding transient provider retries.
+
 ## Repository
 
 This is the public team repository for the AI-First Startup Hackathon.

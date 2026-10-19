@@ -31,6 +31,10 @@ public class ValidationService {
         Objects.requireNonNull(order, "order must not be null");
 
         List<ValidationIssue> issues = new ArrayList<>();
+        if (order.customerName() == null || order.customerName().isBlank()) {
+            add(issues, ValidationCode.MISSING_CUSTOMER_NAME, ValidationSeverity.ERROR, "customerName",
+                    "Enter a customer name before confirming.");
+        }
         String normalizedPhone = normalizePhone(order.customerPhone());
         if (order.customerPhone() != null && !order.customerPhone().isBlank() && normalizedPhone == null) {
             add(issues, ValidationCode.INVALID_PHONE, ValidationSeverity.WARNING, "customerPhone",

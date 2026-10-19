@@ -8,6 +8,7 @@ import in.smarttech.dukaandost.domain.DraftStatus;
 import in.smarttech.dukaandost.domain.OrderDraft;
 import in.smarttech.dukaandost.domain.SourceType;
 import in.smarttech.dukaandost.service.DraftWorkflowService;
+import in.smarttech.dukaandost.service.ExtractionFailedException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,5 +74,40 @@ class DraftControllerTest {
                 .andExpect(status().isOk());
 
         verify(workflowService).get(id);
+    }
+
+    @Test
+    void returnsSavedDraftIdAndFriendlyErrorWhenExtractionFails() throws Exception {
+        UUID draftId = UUID.randomUUID();
+        when(workflowService.create("bad provider input"))
+                .thenThrow(new ExtractionFailedException(draftId));
+
+        mockMvc = MockMvcBuilders.standaloneSetup(new DraftController(workflowService, objectMapper))
+                .setControllerAdvice(new ApiExceptionHandler())
+                .build();
+        mockMvc.perform(post("/api/drafts")
+                        .contentType("application/json")
+                        .content("""
+                                {"transcript":"bad provider input"}
+                                """))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message").value(
+                        "Couldn't read this note. Your text is saved. You can retry "
+                                + "or enter the details manually."))
+                .andExpect(jsonPath("$.draftId").value(draftId.toString()));
+    }
+
+    @Test
+    void retryEndpointReturns502WithDraftIdWhenExtractionFailsAgain() throws Exception {
+        UUID draftId = UUID.randomUUID();
+        when(workflowService.retryExtraction(draftId, null))
+                .thenThrow(new ExtractionFailedException(draftId));
+
+        mockMvc = MockMvcBuilders.standaloneSetup(new DraftController(workflowService, objectMapper))
+                .setControllerAdvice(new ApiExceptionHandler())
+                .build();
+        mockMvc.perform(post("/api/drafts/" + draftId + "/extract"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.draftId").value(draftId.toString()));
     }
 }

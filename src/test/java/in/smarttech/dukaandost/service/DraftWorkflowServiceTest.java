@@ -34,6 +34,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.web.server.ResponseStatusException;
@@ -94,6 +95,72 @@ class DraftWorkflowServiceTest {
                 .hasMessageContaining("transcript must not be blank");
 
         verify(draftRepository, never()).save(any());
+    }
+
+    @Test
+    void savesDraftAndReturnsFriendlyFailureWhenExtractionThrows() {
+        OrderDraft draft = new OrderDraft("#chini - 150", SourceType.TEXT, DraftStatus.PROCESSING);
+        when(draftRepository.save(any(OrderDraft.class))).thenReturn(draft);
+        when(extractionService.extract("#chini - 150"))
+                .thenThrow(new IllegalStateException("provider unavailable"));
+
+        assertThatThrownBy(() -> service.create("#chini - 150"))
+                .isInstanceOf(ExtractionFailedException.class);
+
+        assertThat(draft.getStatus()).isEqualTo(DraftStatus.EXTRACTION_FAILED);
+        assertThat(draft.getTranscript()).isEqualTo("#chini - 150");
+        assertThat(draft.getReviewNotes())
+                .isEqualTo("Couldn't read this note. Your text is saved. You can retry "
+                        + "or enter the details manually.");
+        verify(draftRepository, org.mockito.Mockito.times(2)).save(any(OrderDraft.class));
+        InOrder order = org.mockito.Mockito.inOrder(draftRepository, extractionService);
+        order.verify(draftRepository).save(any(OrderDraft.class));
+        order.verify(extractionService).extract("#chini - 150");
+    }
+
+    @Test
+    void retryReusesSameDraftAndSavesEditedTranscriptFirst() {
+        OrderDraft draft = new OrderDraft("old", SourceType.TEXT, DraftStatus.EXTRACTION_FAILED);
+        when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+        when(extractionService.extract("edited")).thenReturn(extractionResult);
+        when(draftRepository.save(draft)).thenReturn(draft);
+
+        OrderDraft result = service.retryExtraction(UUID.randomUUID(), "edited");
+
+        assertThat(result).isSameAs(draft);
+        assertThat(result.getTranscript()).isEqualTo("edited");
+        assertThat(result.getStatus()).isEqualTo(DraftStatus.READY);
+        InOrder order = org.mockito.Mockito.inOrder(draftRepository, extractionService);
+        order.verify(draftRepository).save(draft);
+        order.verify(extractionService).extract("edited");
+    }
+
+    @Test
+    void retryWithoutBodyKeepsTranscriptAndFailureStaysRetryable() {
+        OrderDraft draft = new OrderDraft("keep me", SourceType.TEXT, DraftStatus.NEEDS_REVIEW);
+        when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+        when(draftRepository.save(draft)).thenReturn(draft);
+        when(extractionService.extract("keep me")).thenThrow(new IllegalStateException("boom"));
+
+        assertThatThrownBy(() -> service.retryExtraction(UUID.randomUUID(), null))
+                .isInstanceOf(ExtractionFailedException.class);
+
+        assertThat(draft.getTranscript()).isEqualTo("keep me");
+        assertThat(draft.getStatus()).isEqualTo(DraftStatus.EXTRACTION_FAILED);
+    }
+
+    @Test
+    void retryRejectsConfirmedAndDiscardedDrafts() {
+        for (DraftStatus status : new DraftStatus[] {DraftStatus.CONFIRMED, DraftStatus.DISCARDED}) {
+            OrderDraft draft = new OrderDraft("x", SourceType.TEXT, status);
+            when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+
+            assertThatThrownBy(() -> service.retryExtraction(UUID.randomUUID(), "new"))
+                    .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                    .hasMessageContaining("409");
+            assertThat(draft.getStatus()).isEqualTo(status);
+        }
+        verify(extractionService, org.mockito.Mockito.never()).extract(any());
     }
 
     @Test

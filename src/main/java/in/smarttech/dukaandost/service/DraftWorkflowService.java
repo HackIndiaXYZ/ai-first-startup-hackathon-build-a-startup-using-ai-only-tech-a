@@ -18,9 +18,12 @@ import in.smarttech.dukaandost.repository.OrderRepository;
 import in.smarttech.dukaandost.repository.PaymentRepository;
 import in.smarttech.dukaandost.validation.ExtractedOrder;
 import in.smarttech.dukaandost.validation.ValidationIssue;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,7 +58,9 @@ public class DraftWorkflowService {
         this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
-    @Transactional
+    private static final Logger log = LoggerFactory.getLogger(DraftWorkflowService.class);
+    private static final int MAX_LOGGED_MESSAGE = 200;
+
     public OrderDraft create(String transcript) {
         requireTranscript(transcript);
         OrderDraft draft = draftRepository.save(new OrderDraft(transcript, SourceType.TEXT, DraftStatus.PROCESSING));
@@ -68,7 +73,6 @@ public class DraftWorkflowService {
                 .orElseThrow(() -> notFound("Draft not found: " + id));
     }
 
-    @Transactional
     public OrderDraft update(UUID id, String transcript) {
         requireTranscript(transcript);
         OrderDraft draft = draftRepository.findById(id)
@@ -76,6 +80,24 @@ public class DraftWorkflowService {
         ensureEditable(draft);
         draft.setTranscript(transcript);
         draft.setStatus(DraftStatus.PROCESSING);
+        draftRepository.save(draft);
+        return extractInto(draft);
+    }
+
+    public OrderDraft retryExtraction(UUID id, String editedTranscript) {
+        OrderDraft draft = draftRepository.findById(id)
+                .orElseThrow(() -> notFound("Draft not found: " + id));
+        DraftStatus status = draft.getStatus();
+        if (status != DraftStatus.EXTRACTION_FAILED && status != DraftStatus.READY
+                && status != DraftStatus.NEEDS_REVIEW) {
+            throw conflict("Extraction can only be rerun for failed or unconfirmed drafts.");
+        }
+        if (editedTranscript != null) {
+            requireTranscript(editedTranscript);
+            draft.setTranscript(editedTranscript);
+        }
+        draft.setStatus(DraftStatus.PROCESSING);
+        draftRepository.save(draft);
         return extractInto(draft);
     }
 
@@ -148,7 +170,9 @@ public class DraftWorkflowService {
         }
         if (orderData.advanceAmount() != null) {
             paymentRepository.save(new Payment(order, orderData.advanceAmount(),
-                    orderData.advancePaidAt(), orderData.advanceNote()));
+                    orderData.advancePaidAt() == null ? null
+                            : orderData.advancePaidAt().atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant(),
+                    orderData.advanceNote()));
         }
         draft.setStatus(DraftStatus.CONFIRMED);
         draftRepository.save(draft);
@@ -174,12 +198,34 @@ public class DraftWorkflowService {
             draft.setReviewNotes(String.join("\n", result.reviewNotes()));
             draft.setStatus(result.reviewRequired() ? DraftStatus.NEEDS_REVIEW : DraftStatus.READY);
             return draftRepository.save(draft);
-        } catch (RuntimeException exception) {
+        } catch (Exception exception) {
+            logExtractionFailure(draft, exception);
             draft.setStatus(DraftStatus.EXTRACTION_FAILED);
-            draft.setReviewNotes(exception.getMessage());
+            draft.setReviewNotes("Couldn't read this note. Your text is saved. You can retry "
+                    + "or enter the details manually.");
             draftRepository.save(draft);
-            throw exception;
+            throw new ExtractionFailedException(draft.getId());
         }
+    }
+
+    // Logs only exception types and a bounded message; never the transcript, request body or API key.
+    private void logExtractionFailure(OrderDraft draft, Exception exception) {
+        Throwable root = exception;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String message = String.valueOf(exception.getMessage());
+        String transcript = draft.getTranscript();
+        if (transcript != null && !transcript.isBlank()) {
+            message = message.replace(transcript, "[redacted]");
+        }
+        message = message.replaceAll("(?:sk-[A-Za-z0-9_-]+|AIza[0-9A-Za-z_-]{30,})", "[redacted]")
+                .replaceAll("\\s+", " ");
+        if (message.length() > MAX_LOGGED_MESSAGE) {
+            message = message.substring(0, MAX_LOGGED_MESSAGE) + "...";
+        }
+        log.error("Extraction failed for draft {}: {}: {} (root cause {})",
+                draft.getId(), exception.getClass().getName(), message, root.getClass().getName());
     }
 
     private JsonNode toExtractionJson(ExtractionResult result) {

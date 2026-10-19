@@ -1,6 +1,7 @@
 package in.smarttech.dukaandost.validation;
 
 public enum ValidationCode {
+    MISSING_CUSTOMER_NAME,
     MISSING_TOTAL,
     NEGATIVE_TOTAL,
     NEGATIVE_QUANTITY,

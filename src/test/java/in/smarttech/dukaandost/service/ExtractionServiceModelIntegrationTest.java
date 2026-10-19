@@ -2,7 +2,6 @@ package in.smarttech.dukaandost.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import in.smarttech.dukaandost.DukaanDostApplication;
 import in.smarttech.dukaandost.domain.OrderEntryType;
 import in.smarttech.dukaandost.validation.ValidationCode;
 import java.time.Clock;
@@ -11,19 +10,21 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration;
+import org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration;
+import org.springframework.ai.model.tool.autoconfigure.ToolCallingAutoConfiguration;
+import org.springframework.ai.retry.autoconfigure.SpringAiRetryAutoConfiguration;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 
-@SpringBootTest(
-        classes = DukaanDostApplication.class,
-        properties = "spring.autoconfigure.exclude="
-                + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
-                + "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"
-                + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration")
-@Import(ExtractionServiceModelIntegrationTest.FixedClockConfiguration.class)
+@SpringBootTest(classes = ExtractionServiceModelIntegrationTest.ExtractionTestConfiguration.class)
 @EnabledIf("isApiKeyConfigured")
 class ExtractionServiceModelIntegrationTest {
 
@@ -34,7 +35,19 @@ class ExtractionServiceModelIntegrationTest {
     private ValidationService validationService;
 
     static boolean isApiKeyConfigured() {
-        return present("OPENAI_API_KEY") || present("SPRING_AI_OPENAI_API_KEY");
+        return present("GEMINI_API_KEY");
+    }
+
+    @Test
+    void extractsHashtagItemWithoutGuessingCustomer() {
+        ExtractionResult result = extractionService.extract("#chini - 150");
+
+        assertThat(result.validationResult().normalizedOrder().customerName()).isNull();
+        assertThat(result.validationResult().normalizedOrder().total()).isEqualByComparingTo("150");
+        assertThat(result.validationResult().normalizedOrder().items()).anySatisfy(item ->
+                assertThat(item.description().toLowerCase()).contains("chini"));
+        assertThat(result.reviewRequired()).isTrue();
+        assertThat(result.reviewNotes()).isNotEmpty();
     }
 
     @Test
@@ -46,6 +59,7 @@ class ExtractionServiceModelIntegrationTest {
         assertThat(result.validationResult().normalizedOrder().advanceAmount()).isEqualByComparingTo("500");
         assertThat(result.validationResult().normalizedOrder().dueDate().toString()).isEqualTo("2026-10-16");
         assertThat(result.reviewRequired()).isTrue();
+        assertThat(result.reviewNotes()).isNotEmpty();
     }
 
     @Test
@@ -99,11 +113,20 @@ class ExtractionServiceModelIntegrationTest {
         return value != null && !value.isBlank();
     }
 
-    @TestConfiguration
-    static class FixedClockConfiguration {
+    @Configuration(proxyBeanMethods = false)
+    @Import({ExtractionService.class, ValidationService.class})
+    @ImportAutoConfiguration({
+            JacksonAutoConfiguration.class,
+            HttpMessageConvertersAutoConfiguration.class,
+            RestClientAutoConfiguration.class,
+            WebClientAutoConfiguration.class,
+            SpringAiRetryAutoConfiguration.class,
+            ToolCallingAutoConfiguration.class,
+            ChatClientAutoConfiguration.class,
+            OpenAiChatAutoConfiguration.class})
+    static class ExtractionTestConfiguration {
 
         @Bean
-        @Primary
         Clock fixedClock() {
             return Clock.fixed(Instant.parse("2026-10-15T06:30:00Z"), ZoneId.of("Asia/Kolkata"));
         }

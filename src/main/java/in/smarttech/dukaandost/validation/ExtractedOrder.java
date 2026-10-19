@@ -2,7 +2,6 @@ package in.smarttech.dukaandost.validation;
 
 import in.smarttech.dukaandost.domain.OrderEntryType;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -18,7 +17,7 @@ public record ExtractedOrder(
         String currency,
         List<ExtractedOrderItem> items,
         BigDecimal advanceAmount,
-        Instant advancePaidAt,
+        LocalDate advancePaidAt,
         String advanceNote,
         String transcript) {
 

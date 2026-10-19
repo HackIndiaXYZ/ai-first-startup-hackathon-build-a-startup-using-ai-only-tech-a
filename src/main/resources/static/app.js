@@ -217,6 +217,9 @@ async function loadOutstanding() {
     $("dues-list").hidden = true;
     try {
         const orders = await request("/api/orders/outstanding");
+        if ($("global-message").classList.contains("error")) {
+            clearMessage();
+        }
         const list = $("dues-list");
         list.replaceChildren();
         if (!orders.length) {
