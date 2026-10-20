@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#245c4f">
-    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="icon" href="/logo.svg?v=2" type="image/svg+xml">
     <title>Dukaan Dost | Sign in</title>
-    <link rel="stylesheet" href="/styles.css?v=11">
+    <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
 <main class="shell">
@@ -23,14 +23,17 @@
 
     <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
 
-    <form id="login-form" class="card" autocomplete="on">
+    <form id="login-form" class="card" autocomplete="on" novalidate>
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="username" required>
+        <input id="email" name="email" type="email" autocomplete="username" required aria-describedby="login-email-error">
+        <p id="login-email-error" class="field-error" aria-live="polite" hidden></p>
         <label for="password">Password</label>
         <div class="password-field">
-            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <input id="password" name="password" type="password" autocomplete="current-password" required
+                   aria-describedby="login-password-error">
             <button class="secondary" type="button" data-toggle-password="password" aria-pressed="false">Show</button>
         </div>
+        <p id="login-password-error" class="field-error" aria-live="polite" hidden></p>
         <div class="form-actions">
             <button id="login-submit" class="primary" type="submit">Sign in</button>
         </div>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#245c4f">
     <title>Dukaan Dost | Order desk</title>
-    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="icon" href="/logo.svg?v=2" type="image/svg+xml">
     <script>
         (() => {
             const owner = localStorage.getItem("dukaan-owner-email");
@@ -13,7 +13,7 @@
             document.documentElement.dataset.theme = theme || "SYSTEM";
         })();
     </script>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
 <main class="shell">
@@ -23,12 +23,12 @@
             <h1>Your order desk, made simple.</h1>
             <p class="hero-copy">Turn a Hindi, Hinglish, or English note into a reviewed order.</p>
         </div>
-        <img class="hero-mark" src="/logo.svg" alt="Dukaan Dost">
+        <img class="hero-mark" src="/logo.svg?v=2" alt="Dukaan Dost">
     </header>
     <div id="welcome-overlay" class="welcome-overlay" role="dialog" aria-modal="true"
          aria-labelledby="welcome-title" hidden>
         <section class="welcome-card">
-            <img src="/logo.svg" alt="" class="welcome-logo">
+            <img src="/logo.svg?v=2" alt="" class="welcome-logo">
             <h2 id="welcome-title">Welcome, <span id="welcome-name"></span></h2>
             <p>Your private shop desk is ready.</p>
             <button id="skip-welcome" class="secondary" type="button">Skip</button>

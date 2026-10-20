@@ -118,6 +118,8 @@ input, textarea, .summary-item, .today-summary-item, .due-row, .history-order, .
 input[type="checkbox"] { width: auto; }
 textarea { resize: vertical; min-height: 120px; }
 textarea:focus, input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(36, 92, 79, .12); }
+input.invalid { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(156, 77, 56, .12); }
+.field-error { margin: -3px 0 12px; color: var(--coral); font-size: .82rem; }
 
 .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 button { border: 0; border-radius: 999px; padding: 12px 19px; font-weight: 800; transition: transform .15s, background .15s; }

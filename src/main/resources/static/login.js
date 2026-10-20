@@ -13,9 +13,63 @@ async function fetchSession() {
     return response.json();
 }
 
+function setFieldError(fieldId, errorId, text) {
+    const field = document.getElementById(fieldId);
+    const error = document.getElementById(errorId);
+    error.textContent = text || "";
+    error.hidden = !text;
+    field.setAttribute("aria-invalid", String(Boolean(text)));
+    field.classList.toggle("invalid", Boolean(text));
+    return !text;
+}
+
+function validateLogin() {
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    email.dataset.validated = "true";
+    password.dataset.validated = "true";
+    const emailError = !email.value.trim()
+        ? "Enter your email address."
+        : email.validity.typeMismatch ? "Enter a valid email address." : "";
+    const passwordError = password.value ? "" : "Enter your password.";
+    const emailValid = setFieldError("email", "login-email-error", emailError);
+    const passwordValid = setFieldError("password", "login-password-error", passwordError);
+    const valid = emailValid && passwordValid;
+    if (!valid) document.querySelector("#login-form .invalid")?.focus();
+    return valid;
+}
+
+for (const [id, fieldId] of [["email", "login-email"], ["password", "login-password"]]) {
+    const field = document.getElementById(id);
+    field.addEventListener("blur", () => {
+        field.dataset.validated = "true";
+        if (id === "email") {
+            setFieldError(id, `${fieldId}-error`, !field.value.trim()
+                ? "Enter your email address."
+                : field.validity.typeMismatch ? "Enter a valid email address." : "");
+        } else {
+            setFieldError("password", "login-password-error", field.value ? "" : "Enter your password.");
+        }
+    });
+    field.addEventListener("input", () => {
+        if (field.dataset.validated !== "true") return;
+        if (id === "email") {
+            setFieldError(id, `${fieldId}-error`, !field.value.trim()
+                ? "Enter your email address."
+                : field.validity.typeMismatch ? "Enter a valid email address." : "");
+        } else {
+            setFieldError("password", "login-password-error", field.value ? "" : "Enter your password.");
+        }
+    });
+}
+
 async function login(event) {
     event.preventDefault();
+    if (!validateLogin()) return;
+    const initialText = submit.textContent;
     submit.disabled = true;
+    submit.textContent = "Signing in…";
+    submit.setAttribute("aria-busy", "true");
     message.hidden = true;
     try {
         const session = await fetchSession();
@@ -51,6 +105,8 @@ async function login(event) {
         showError("Could not reach the server. Check your connection and try again.");
     } finally {
         submit.disabled = false;
+        submit.textContent = initialText;
+        submit.removeAttribute("aria-busy");
     }
 }
 

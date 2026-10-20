@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#245c4f">
-    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="icon" href="/logo.svg?v=2" type="image/svg+xml">
     <title>Dukaan Dost | Create account</title>
-    <link rel="stylesheet" href="/styles.css?v=11">
+    <link rel="stylesheet" href="/styles.css?v=12">
 </head>
 <body>
 <main class="shell">
@@ -23,30 +23,37 @@
 
     <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
 
-    <form id="signup-form" class="card" autocomplete="on">
+    <form id="signup-form" class="card" autocomplete="on" novalidate>
         <label for="name">Your name</label>
-        <input id="name" name="name" type="text" autocomplete="name" maxlength="200" required>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="200" required aria-describedby="name-error">
+        <p id="name-error" class="field-error" aria-live="polite" hidden></p>
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="email-error">
+        <p id="email-error" class="field-error" aria-live="polite" hidden></p>
         <label for="password">Password (8+ characters, upper/lowercase, number and symbol)</label>
         <div class="password-field">
-            <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required
+                   aria-describedby="password-error">
             <button class="secondary" type="button" data-toggle-password="password" aria-pressed="false">Show</button>
         </div>
+        <p id="password-error" class="field-error" aria-live="polite" hidden></p>
         <label for="confirm-password">Confirm password</label>
         <div class="password-field">
-            <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required>
+            <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required
+                   aria-describedby="confirm-password-error">
             <button class="secondary" type="button" data-toggle-password="confirm-password"
                     aria-pressed="false">Show</button>
         </div>
+        <p id="confirm-password-error" class="field-error" aria-live="polite" hidden></p>
         <label for="phone">Phone (optional contact only; not used for login or reset)</label>
         <div class="form-actions">
             <select id="phone-country" aria-label="Phone country code">
                 <option value="+91" selected>India +91</option>
             </select>
             <input id="phone" name="phone" type="tel" autocomplete="tel-national" inputmode="numeric"
-                   maxlength="15" placeholder="98765 43210">
+                   maxlength="15" placeholder="98765 43210" aria-describedby="phone-error">
         </div>
+        <p id="phone-error" class="field-error" aria-live="polite" hidden></p>
         <details>
             <summary>Address (optional)</summary>
             <label for="street">Street</label>
@@ -57,13 +64,23 @@
             <input id="state" name="state" type="text" maxlength="100" autocomplete="address-level1">
             <label for="postal-code">PIN code</label>
             <input id="postal-code" name="postalCode" type="text" inputmode="numeric" pattern="[0-9]{6}"
-                   maxlength="6" autocomplete="postal-code">
+                   maxlength="6" autocomplete="postal-code" aria-describedby="postal-code-error">
+            <p id="postal-code-error" class="field-error" aria-live="polite" hidden></p>
         </details>
         <div class="form-actions">
             <button id="submit" class="primary" type="submit">Create account</button>
         </div>
         <p class="quiet">Already registered? <a href="/login.html">Sign in</a></p>
     </form>
+    <div id="signup-welcome" class="welcome-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="signup-welcome-title" hidden>
+        <section class="welcome-card">
+            <img src="/logo.svg?v=2" alt="" class="welcome-logo">
+            <h2 id="signup-welcome-title">Welcome, <span id="signup-welcome-name"></span></h2>
+            <p>If this email can be registered, check your inbox for a verification link before signing in.</p>
+            <button id="signup-welcome-continue" class="secondary" type="button">Continue</button>
+        </section>
+    </div>
 </main>
 <script src="/auth.js"></script>
 <script src="/password-toggle.js"></script>

@@ -168,6 +168,35 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void logoAndPasswordToggleLoadAsPublicStaticAssets() throws Exception {
+        var logo = mockMvc.perform(get("/logo.svg").queryParam("v", "2"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse();
+        assertThat(logo.getContentType()).startsWith("image/svg+xml");
+
+        var toggle = mockMvc.perform(get("/password-toggle.js"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse();
+        assertThat(toggle.getContentType()).contains("javascript");
+        assertThat(toggle.getContentAsString()).contains("data-toggle-password");
+    }
+
+    @Test
+    void authPagesContainBrandedWelcomeAndInlineValidationHooks() throws Exception {
+        String signup = mockMvc.perform(get("/signup.html"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(signup).contains("auth-logo", "signup-welcome", "name-error",
+                "password-error", "data-toggle-password");
+
+        String login = mockMvc.perform(get("/login.html"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(login).contains("auth-logo", "login-email-error",
+                "login-password-error", "data-toggle-password");
+    }
+
+    @Test
     void sessionEndpointIsPublicAndReportsUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/auth/session"))
                 .andExpect(status().isOk())
