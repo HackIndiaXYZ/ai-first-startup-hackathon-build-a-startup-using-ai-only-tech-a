@@ -20,6 +20,26 @@ public class ApiExceptionHandler {
         return new ExtractionFailureResponse(EXTRACTION_FAILURE_MESSAGE, exception.getDraftId());
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public org.springframework.http.ResponseEntity<java.util.Map<String, String>> handleStatus(
+            org.springframework.web.server.ResponseStatusException exception) {
+        String message = exception.getReason() == null ? "Request failed." : exception.getReason();
+        return org.springframework.http.ResponseEntity.status(exception.getStatusCode())
+                .body(java.util.Map.of("message", message));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public java.util.Map<String, String> handleValidation(
+            org.springframework.web.bind.MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getAllErrors().stream()
+                .map(error -> error instanceof org.springframework.validation.FieldError field
+                        ? field.getField() + " " + field.getDefaultMessage()
+                        : error.getDefaultMessage())
+                .findFirst().orElse("Invalid request.");
+        return java.util.Map.of("message", message);
+    }
+
     public record ExtractionFailureResponse(String message, UUID draftId) {
     }
 }

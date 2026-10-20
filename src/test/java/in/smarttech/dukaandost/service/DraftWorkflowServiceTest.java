@@ -3,6 +3,7 @@ package in.smarttech.dukaandost.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,7 @@ import in.smarttech.dukaandost.domain.SourceType;
 import in.smarttech.dukaandost.repository.CustomerRepository;
 import in.smarttech.dukaandost.repository.OrderDraftRepository;
 import in.smarttech.dukaandost.repository.OrderRepository;
+import in.smarttech.dukaandost.security.CurrentOwner;
 import in.smarttech.dukaandost.repository.PaymentRepository;
 import in.smarttech.dukaandost.validation.ExtractedOrder;
 import in.smarttech.dukaandost.validation.ValidationResult;
@@ -57,14 +59,17 @@ class DraftWorkflowServiceTest {
     private ObjectMapper objectMapper;
     private ExtractedOrder extractedOrder;
     private ExtractionResult extractionResult;
+    private final UUID ownerId = UUID.randomUUID();
+    private final CurrentOwner currentOwner = org.mockito.Mockito.mock(CurrentOwner.class);
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(currentOwner.id()).thenReturn(ownerId);
         objectMapper = new ObjectMapper().findAndRegisterModules();
         ValidationService validationService = new ValidationService(
                 Clock.fixed(Instant.parse("2026-10-15T06:30:00Z"), ZoneId.of("Asia/Kolkata")));
         service = new DraftWorkflowService(draftRepository, orderRepository, customerRepository,
-                paymentRepository, extractionService, validationService, objectMapper);
+                paymentRepository, extractionService, validationService, objectMapper, currentOwner);
         extractedOrder = new ExtractedOrder("Asha", "+919876543210", "hi", null,
                 OrderEntryType.ORDER, LocalDate.of(2026, 10, 15), null,
                 new BigDecimal("100"), "INR", List.of(), new BigDecimal("20"),
@@ -121,7 +126,7 @@ class DraftWorkflowServiceTest {
     @Test
     void retryReusesSameDraftAndSavesEditedTranscriptFirst() {
         OrderDraft draft = new OrderDraft("old", SourceType.TEXT, DraftStatus.EXTRACTION_FAILED);
-        when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdAndOwnerId(any(), eq(ownerId))).thenReturn(Optional.of(draft));
         when(extractionService.extract("edited")).thenReturn(extractionResult);
         when(draftRepository.save(draft)).thenReturn(draft);
 
@@ -138,7 +143,7 @@ class DraftWorkflowServiceTest {
     @Test
     void retryWithoutBodyKeepsTranscriptAndFailureStaysRetryable() {
         OrderDraft draft = new OrderDraft("keep me", SourceType.TEXT, DraftStatus.NEEDS_REVIEW);
-        when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdAndOwnerId(any(), eq(ownerId))).thenReturn(Optional.of(draft));
         when(draftRepository.save(draft)).thenReturn(draft);
         when(extractionService.extract("keep me")).thenThrow(new IllegalStateException("boom"));
 
@@ -153,7 +158,7 @@ class DraftWorkflowServiceTest {
     void retryRejectsConfirmedAndDiscardedDrafts() {
         for (DraftStatus status : new DraftStatus[] {DraftStatus.CONFIRMED, DraftStatus.DISCARDED}) {
             OrderDraft draft = new OrderDraft("x", SourceType.TEXT, status);
-            when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+            when(draftRepository.findByIdAndOwnerId(any(), eq(ownerId))).thenReturn(Optional.of(draft));
 
             assertThatThrownBy(() -> service.retryExtraction(UUID.randomUUID(), "new"))
                     .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
@@ -166,7 +171,7 @@ class DraftWorkflowServiceTest {
     @Test
     void updatesOnlyAnActiveDraftAndRerunsExtraction() {
         OrderDraft draft = new OrderDraft("old", SourceType.TEXT, DraftStatus.READY);
-        when(draftRepository.findById(any())).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdAndOwnerId(any(), eq(ownerId))).thenReturn(Optional.of(draft));
         when(extractionService.extract("new")).thenReturn(extractionResult);
         when(draftRepository.save(draft)).thenReturn(draft);
 
@@ -186,7 +191,7 @@ class DraftWorkflowServiceTest {
         draft.setExtractionJson(extractionJson(extractedOrder, true));
         when(draft.getStatus()).thenReturn(DraftStatus.NEEDS_REVIEW);
         when(draft.getExtractionJson()).thenReturn(extractionJson(extractedOrder, true));
-        when(draftRepository.findByIdForUpdate(draft.getId())).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdForUpdate(draft.getId(), ownerId)).thenReturn(Optional.of(draft));
         when(orderRepository.findByOriginatingDraft_Id(draft.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.confirm(draft.getId(), false))
@@ -202,7 +207,7 @@ class DraftWorkflowServiceTest {
         OrderDraft draft = org.mockito.Mockito.mock(OrderDraft.class);
         UUID draftId = UUID.randomUUID();
         when(draft.getStatus()).thenReturn(DraftStatus.READY);
-        when(draftRepository.findById(draftId)).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdAndOwnerId(draftId, ownerId)).thenReturn(Optional.of(draft));
         when(orderRepository.findByOriginatingDraft_Id(draftId)).thenReturn(Optional.empty());
         when(draftRepository.save(draft)).thenReturn(draft);
 
@@ -212,7 +217,7 @@ class DraftWorkflowServiceTest {
         OrderDraft confirmedDraft = org.mockito.Mockito.mock(OrderDraft.class);
         UUID confirmedId = UUID.randomUUID();
         when(confirmedDraft.getStatus()).thenReturn(DraftStatus.CONFIRMED);
-        when(draftRepository.findById(confirmedId)).thenReturn(Optional.of(confirmedDraft));
+        when(draftRepository.findByIdAndOwnerId(confirmedId, ownerId)).thenReturn(Optional.of(confirmedDraft));
         assertThatThrownBy(() -> service.discard(confirmedId))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Confirmed orders");
@@ -226,7 +231,7 @@ class DraftWorkflowServiceTest {
         Order existing = new Order(customer, draft, OrderEntryType.ORDER,
                 LocalDate.of(2026, 10, 15), null, new BigDecimal("100"), "INR",
                 OrderStatus.CONFIRMED, "text");
-        when(draftRepository.findByIdForUpdate(draftId)).thenReturn(Optional.of(draft));
+        when(draftRepository.findByIdForUpdate(draftId, ownerId)).thenReturn(Optional.of(draft));
         when(orderRepository.findByOriginatingDraft_Id(draftId)).thenReturn(Optional.of(existing));
 
         DraftWorkflowService.ConfirmationResult result = service.confirm(draftId, false);
@@ -250,5 +255,21 @@ class DraftWorkflowServiceTest {
         json.put("reviewRequired", reviewRequired);
         json.set("reviewNotes", objectMapper.createArrayNode());
         return json;
+    }
+
+    @Test
+    void editingKeepsOriginalTranscriptAndUsesChosenLanguage() {
+        OrderDraft draft = new OrderDraft("pehle ka note", SourceType.TEXT, DraftStatus.NEEDS_REVIEW);
+        when(draftRepository.findByIdAndOwnerId(any(), any())).thenReturn(java.util.Optional.of(draft));
+        when(draftRepository.save(any(OrderDraft.class))).thenReturn(draft);
+        when(extractionService.extract("नया नोट", in.smarttech.dukaandost.domain.NoteLanguage.HINDI))
+                .thenReturn(extractionResult);
+
+        OrderDraft result = service.update(java.util.UUID.randomUUID(), "नया नोट",
+                in.smarttech.dukaandost.domain.NoteLanguage.HINDI);
+
+        assertThat(result.getTranscript()).isEqualTo("नया नोट");
+        assertThat(result.getOriginalTranscript()).isEqualTo("pehle ka note");
+        assertThat(result.getLanguageHint()).isEqualTo(in.smarttech.dukaandost.domain.NoteLanguage.HINDI);
     }
 }

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="SYSTEM">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#245c4f">
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <script>
+        (() => {
+            const owner = localStorage.getItem("dukaan-owner-email");
+            const theme = owner ? localStorage.getItem(`dukaan-theme:${owner}`) : null;
+            document.documentElement.dataset.theme = theme || "SYSTEM";
+        })();
+    </script>
+    <link rel="stylesheet" href="/styles.css">
+    <title>Dukaan Dost | Profile & settings</title>
+</head>
+<body>
+<main class="shell">
+    <header class="hero">
+        <div>
+            <p class="eyebrow">DUKAAN DOST</p>
+            <h1>Profile & settings</h1>
+            <p class="hero-copy">Manage your shop details, privacy preferences and account.</p>
+        </div>
+        <img class="hero-mark" src="/logo.svg" alt="Dukaan Dost">
+    </header>
+    <p><a href="/" class="button-link">← Back to order desk</a></p>
+    <div id="profile-message" class="message" role="status" aria-live="polite" hidden></div>
+
+    <section class="card">
+        <div class="profile-heading">
+            <div id="profile-avatar" class="profile-avatar-large" aria-label="Profile picture">DD</div>
+            <div><h2>Your profile</h2><p id="phone-verification-status" class="quiet"></p></div>
+        </div>
+        <form id="profile-form">
+            <label for="profile-name">Full name</label>
+            <input id="profile-name" name="name" maxlength="200" required>
+            <label for="profile-email">Email (read-only)</label>
+            <input id="profile-email" name="email" type="email" readonly>
+            <label for="profile-phone">Phone (optional contact only)</label>
+            <input id="profile-phone" name="phone" type="tel" placeholder="+919876543210" autocomplete="tel">
+            <label for="shop-name">Shop name (optional)</label>
+            <input id="shop-name" name="shopName" maxlength="200">
+            <label for="profile-street">Street</label>
+            <input id="profile-street" name="street" maxlength="200">
+            <div class="two-column">
+                <div><label for="profile-city">City</label><input id="profile-city" name="city" maxlength="100"></div>
+                <div><label for="profile-state">State</label><input id="profile-state" name="state" maxlength="100"></div>
+            </div>
+            <label for="profile-postal">PIN code</label>
+            <input id="profile-postal" name="postalCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
+            <div class="form-actions"><button class="primary" type="submit">Save profile</button></div>
+        </form>
+        <label for="avatar-upload">Profile picture (JPG, PNG or WebP; max 2 MB)</label>
+        <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp">
+        <div class="form-actions">
+            <button id="upload-avatar" class="secondary" type="button">Upload / change picture</button>
+            <button id="delete-avatar" class="secondary" type="button">Delete picture</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Preferences</h2>
+        <form id="settings-form">
+            <label for="theme">Theme</label>
+            <select id="theme"><option>LIGHT</option><option>DARK</option><option>SYSTEM</option></select>
+            <label for="ui-language">UI language preference</label>
+            <select id="ui-language"></select>
+            <label for="reminder-language">Default reminder language</label>
+            <select id="reminder-language"></select>
+            <div class="settings-toggles">
+                <label><input type="checkbox" id="in-app-notifications"> In-app notifications</label>
+                <label><input type="checkbox" id="browser-push-enabled"> Browser push (opt in)</label>
+                <label><input type="checkbox" id="payment-due-notifications"> Payment due reminders</label>
+                <label><input type="checkbox" id="overdue-notifications"> Overdue alerts</label>
+                <label><input type="checkbox" id="new-order-notifications"> New order confirmed</label>
+                <label><input type="checkbox" id="payment-received-notifications"> Payment received</label>
+                <label><input type="checkbox" id="daily-summary-notifications"> Daily summary</label>
+            </div>
+            <div class="form-actions"><button class="primary" type="submit">Save preferences</button></div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Change password</h2>
+        <form id="change-password-form">
+            <label for="current-password">Current password</label>
+            <input id="current-password" type="password" autocomplete="current-password" required>
+            <label for="new-password">New password (8+ characters, uppercase, lowercase, number and symbol)</label>
+            <div class="password-field">
+                <input id="new-password" type="password" autocomplete="new-password" required>
+                <button class="secondary" type="button" data-toggle-password="new-password">Show</button>
+            </div>
+            <label for="confirm-new-password">Confirm new password</label>
+            <input id="confirm-new-password" type="password" autocomplete="new-password" required>
+            <button class="primary" type="submit">Change password</button>
+        </form>
+    </section>
+
+    <section class="card danger-zone">
+        <h2>Delete account</h2>
+        <p>This permanently deletes your account, orders, payments, customers, reminder logs and settings.</p>
+        <label for="delete-password">Confirm with your password (or enter your email for a Google-only account)</label>
+        <input id="delete-password" type="password" autocomplete="current-password">
+        <button id="delete-account" class="danger-button" type="button">Delete my account</button>
+    </section>
+</main>
+<script src="/profile.js"></script>
+<script src="/password-toggle.js"></script>
+</body>
+</html>

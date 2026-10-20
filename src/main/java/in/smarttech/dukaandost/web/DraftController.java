@@ -3,6 +3,7 @@ package in.smarttech.dukaandost.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.smarttech.dukaandost.domain.Order;
+import in.smarttech.dukaandost.domain.NoteLanguage;
 import in.smarttech.dukaandost.domain.OrderDraft;
 import in.smarttech.dukaandost.service.DraftWorkflowService;
 import in.smarttech.dukaandost.validation.ExtractedOrder;
@@ -38,7 +39,7 @@ public class DraftController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DraftResponse create(@Valid @RequestBody TranscriptRequest request) {
-        return response(workflowService.create(request.transcript()));
+        return response(workflowService.create(request.transcript(), request.language()));
     }
 
     @GetMapping("/{id}")
@@ -48,13 +49,14 @@ public class DraftController {
 
     @PutMapping("/{id}")
     public DraftResponse update(@PathVariable UUID id, @Valid @RequestBody TranscriptRequest request) {
-        return response(workflowService.update(id, request.transcript()));
+        return response(workflowService.update(id, request.transcript(), request.language()));
     }
 
     @PostMapping("/{id}/extract")
     public DraftResponse extract(
             @PathVariable UUID id, @Valid @RequestBody(required = false) ExtractRequest request) {
-        return response(workflowService.retryExtraction(id, request == null ? null : request.transcript()));
+        return response(workflowService.retryExtraction(id, request == null ? null : request.transcript(),
+                request == null ? null : request.language()));
     }
 
     @PostMapping("/{id}/confirm")
@@ -77,15 +79,17 @@ public class DraftController {
         boolean reviewRequired = extraction != null && extraction.path("reviewRequired").asBoolean(false);
         List<String> reviewNotes = extraction == null || extraction.get("reviewNotes") == null
                 ? List.of() : objectMapper.convertValue(extraction.get("reviewNotes"), List.class);
-        return new DraftResponse(draft.getId(), draft.getTranscript(), draft.getSourceType().name(),
+        return new DraftResponse(draft.getId(), draft.getTranscript(), draft.getOriginalTranscript(),
+                draft.getLanguageHint() == null ? NoteLanguage.AUTO : draft.getLanguageHint(),
+                draft.getSourceType().name(),
                 draft.getStatus().name(), order, reviewRequired, reviewNotes,
                 draft.getReviewNotes(), draft.getCreatedAt(), draft.getUpdatedAt());
     }
 
-    public record TranscriptRequest(@NotBlank String transcript) {
+    public record TranscriptRequest(@NotBlank String transcript, NoteLanguage language) {
     }
 
-    public record ExtractRequest(String transcript) {
+    public record ExtractRequest(String transcript, NoteLanguage language) {
     }
 
     public record ConfirmRequest(@NotNull Boolean acknowledgedReview) {
@@ -94,6 +98,8 @@ public class DraftController {
     public record DraftResponse(
             UUID id,
             String transcript,
+            String originalTranscript,
+            NoteLanguage language,
             String sourceType,
             String status,
             ExtractedOrder extractedOrder,

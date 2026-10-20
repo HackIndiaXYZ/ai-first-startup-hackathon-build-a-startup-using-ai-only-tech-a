@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#245c4f">
     <title>Dukaan Dost | Order desk</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <script>
+        (() => {
+            const owner = localStorage.getItem("dukaan-owner-email");
+            const theme = owner ? localStorage.getItem(`dukaan-theme:${owner}`) : null;
+            document.documentElement.dataset.theme = theme || "SYSTEM";
+        })();
+    </script>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -15,10 +23,71 @@
             <h1>Your order desk, made simple.</h1>
             <p class="hero-copy">Turn a Hindi, Hinglish, or English note into a reviewed order.</p>
         </div>
-        <div class="hero-mark" aria-hidden="true">DD</div>
+        <img class="hero-mark" src="/logo.svg" alt="Dukaan Dost">
     </header>
+    <div id="welcome-overlay" class="welcome-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="welcome-title" hidden>
+        <section class="welcome-card">
+            <img src="/logo.svg" alt="" class="welcome-logo">
+            <h2 id="welcome-title">Welcome, <span id="welcome-name"></span></h2>
+            <p>Your private shop desk is ready.</p>
+            <button id="skip-welcome" class="secondary" type="button">Skip</button>
+        </section>
+    </div>
+    <div class="account-actions">
+        <a id="profile-link" class="profile-link" href="/profile.html" aria-label="Open profile">
+            <span id="profile-avatar-badge" class="profile-avatar-badge">DD</span><span>Profile</span>
+        </a>
+        <button id="notification-bell" class="secondary notification-bell" type="button"
+                aria-expanded="false" aria-controls="notifications-panel">
+            Notifications <span id="notification-count" class="notification-count" hidden>0</span>
+        </button>
+        <button id="logout" class="secondary" type="button">Sign out</button>
+    </div>
+    <section id="notifications-panel" class="card notifications-panel" hidden>
+        <div class="section-heading">
+            <div><h2>Notifications</h2><p id="notification-summary" class="quiet">Loading…</p></div>
+            <button id="clear-notifications" class="secondary" type="button">Clear all</button>
+        </div>
+        <div id="notifications-list" class="notifications-list"></div>
+        <p id="notifications-error" class="message error" role="alert" hidden></p>
+    </section>
 
     <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
+
+    <section class="card today-card" aria-labelledby="today-heading">
+        <div class="section-heading">
+            <div>
+                <p class="step">TODAY</p>
+                <h2 id="today-heading">Today's business summary</h2>
+                <p id="today-date" class="quiet">Loading…</p>
+            </div>
+            <button id="refresh-today" class="icon-button" title="Refresh today's summary"
+                    aria-label="Refresh today's summary">↻</button>
+        </div>
+        <div id="today-summary-loading" class="empty-state">Loading today's summary…</div>
+        <div id="today-summary-error" class="message error" role="status" hidden></div>
+        <div id="today-summary-cards" class="today-summary-cards" hidden>
+            <a class="today-summary-item" href="#history-list" data-history-filter="today-orders">
+                <span>Confirmed orders today</span>
+                <strong id="today-order-count">0</strong>
+                <small id="today-order-total">₹0</small>
+                <span class="summary-link-hint">View today's orders →</span>
+            </a>
+            <a class="today-summary-item" href="#history-list" data-history-filter="today-payments">
+                <span>Payments recorded today</span>
+                <strong id="today-payment-total">₹0</strong>
+                <small>Across confirmed orders</small>
+                <span class="summary-link-hint">View today's payments →</span>
+            </a>
+            <a class="today-summary-item" href="#history-list" data-history-filter="outstanding">
+                <span>Current outstanding dues</span>
+                <strong id="today-outstanding-total">₹0</strong>
+                <small>Confirmed orders</small>
+                <span class="summary-link-hint">View outstanding orders →</span>
+            </a>
+        </div>
+    </section>
 
     <section class="card capture-card" aria-labelledby="capture-heading">
         <div class="section-heading">
@@ -26,16 +95,75 @@
                 <p class="step">STEP 1</p>
                 <h2 id="capture-heading">Capture an order</h2>
             </div>
-            <span class="quiet">Text for now</span>
+            <div class="capture-mode">
+                <button id="capture-order-mode" class="secondary" type="button" aria-pressed="true">Order</button>
+                <button id="capture-payment-mode" class="secondary" type="button" aria-pressed="false">Payment</button>
+            </div>
         </div>
-        <label for="transcript">What did the customer say?</label>
-        <textarea id="transcript" rows="5"
-                  placeholder="Example: Verma ji ko 3 packet cheeni 150 each, total 450. 100 advance de diye."></textarea>
+        <label for="note-language">Language of the note</label>
+        <select id="note-language">
+            <option value="AUTO">Auto-detect</option>
+            <option value="HINDI">Hindi</option>
+            <option value="HINGLISH">Hinglish</option>
+            <option value="ENGLISH">English</option>
+            <option value="MARATHI">Marathi</option>
+            <option value="BENGALI">Bengali</option>
+            <option value="TAMIL">Tamil</option>
+        </select>
+        <p class="hint">Only about the note you type. A customer's reminder language is kept separately.</p>
+        <div id="order-text-capture">
+            <label for="transcript">What did the customer say?</label>
+            <textarea id="transcript" rows="5"
+                      placeholder="Example: Verma ji ko 3 packet cheeni 150 each, total 450. 100 advance de diye."></textarea>
+        </div>
+        <div id="payment-text-capture" hidden>
+            <label for="payment-transcript">What payment did the customer report?</label>
+            <textarea id="payment-transcript" rows="3"
+                      placeholder="Example: Ramesh ne 100 rupaye diye"></textarea>
+            <p class="hint">The note is extracted for review only. No payment is saved until you confirm it below.</p>
+        </div>
+        <fieldset class="voice-note">
+            <legend>Or use a voice note</legend>
+            <p class="quiet">Record or choose an audio file. It is used only to transcribe into the text box and is not saved as an order attachment.</p>
+            <div class="form-actions voice-actions">
+                <button id="start-recording" class="secondary" type="button">Record voice note</button>
+                <button id="stop-recording" class="secondary" type="button" disabled>Stop recording</button>
+                <label class="file-button" for="audio-upload">Choose audio file</label>
+                <input id="audio-upload" type="file" accept="audio/*,.wav,.mp3,.m4a,.mp4,.webm,.ogg,.aac,.flac,.aiff" hidden>
+                <button id="transcribe-audio" class="secondary" type="button" disabled>Transcribe into text</button>
+            </div>
+            <p id="audio-status" class="quiet" role="status" aria-live="polite">Supported languages: Hindi, Hinglish, English, Marathi, Bengali and Tamil.</p>
+        </fieldset>
         <div class="form-actions">
             <button id="create-draft" class="primary">Extract order</button>
             <button id="update-draft" class="secondary" hidden>Rerun extraction</button>
+            <button id="extract-payment" class="primary" type="button" hidden>Review payment</button>
         </div>
+        <details id="original-note" hidden><summary>Original note as first entered</summary>
+            <p id="original-note-text" class="quiet"></p></details>
         <p class="hint">You will review everything before it becomes an order.</p>
+    </section>
+
+    <section id="payment-review-section" class="card" aria-labelledby="payment-review-heading" hidden>
+        <div class="section-heading">
+            <div><p class="step">REVIEW</p><h2 id="payment-review-heading">Review reported payment</h2></div>
+            <span class="quiet">Nothing saved yet</span>
+        </div>
+        <p id="payment-capture-error" class="message error" role="alert" hidden></p>
+        <p id="payment-capture-summary" class="quiet"></p>
+        <label for="payment-customer-match">Matched customer</label>
+        <select id="payment-customer-match"></select>
+        <label for="payment-order-match">Apply payment to outstanding order</label>
+        <select id="payment-order-match"></select>
+        <p id="payment-order-balance" class="quiet"></p>
+        <label for="payment-capture-amount">Amount received</label>
+        <input id="payment-capture-amount" type="number" min="0.01" step="0.01" inputmode="decimal">
+        <label for="payment-capture-note">Note (optional)</label>
+        <input id="payment-capture-note" type="text" maxlength="500">
+        <div class="form-actions">
+            <button id="confirm-payment-capture" class="primary" type="button">Confirm and record payment</button>
+            <button id="cancel-payment-capture" class="secondary" type="button">Cancel</button>
+        </div>
     </section>
 
     <section id="draft-section" class="card" aria-labelledby="review-heading" hidden>
@@ -91,10 +219,20 @@
                        placeholder="0.00">
             </div>
             <div>
-                <label for="payment-note">Note (optional)</label>
-                <input id="payment-note" type="text" maxlength="500" placeholder="Cash, UPI, etc.">
+                <label for="payment-method">Method (optional)</label>
+                <select id="payment-method">
+                    <option value="">Not specified</option>
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK_TRANSFER">Bank transfer</option>
+                    <option value="OTHER">Other</option>
+                </select>
             </div>
         </div>
+        <label for="payment-note">Note (optional)</label>
+        <input id="payment-note" type="text" maxlength="500" placeholder="Reference, remarks">
+        <p class="quiet">This only records a payment you already received. It does not collect money.</p>
         <button id="record-payment" class="primary">Save payment</button>
     </section>
 
@@ -106,12 +244,41 @@
             </div>
             <button id="refresh-dues" class="icon-button" title="Refresh outstanding dues" aria-label="Refresh outstanding dues">↻</button>
         </div>
+        <div class="dues-controls">
+            <div>
+                <label for="dues-search">Search customer</label>
+                <input id="dues-search" type="search" placeholder="Customer name">
+            </div>
+            <div>
+                <label for="dues-sort">Sort dues</label>
+                <select id="dues-sort">
+                    <option value="highest">Highest outstanding</option>
+                    <option value="oldest">Oldest first</option>
+                </select>
+            </div>
+        </div>
         <div id="dues-loading" class="empty-state">Loading dues…</div>
         <div id="dues-list" class="dues-list" hidden></div>
     </section>
 
+    <section id="history-section" class="card history-card" aria-labelledby="history-heading">
+        <div class="section-heading">
+            <div>
+                <p class="step">YOUR RECORDS</p>
+                <h2 id="history-heading">Order &amp; payment history</h2>
+                <p id="history-filter-label" class="quiet">All orders</p>
+            </div>
+            <div class="history-heading-actions">
+                <button id="clear-history-filter" class="secondary" type="button" hidden>Show all</button>
+                <button id="refresh-history" class="icon-button" title="Refresh history" aria-label="Refresh history">↻</button>
+            </div>
+        </div>
+        <div id="history-loading" class="empty-state">Loading history…</div>
+        <div id="history-list" class="history-list" hidden></div>
+    </section>
+
     <footer>Review carefully before confirming. Dukaan Dost never sends a payment or WhatsApp message automatically.</footer>
 </main>
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=9"></script>
 </body>
 </html>

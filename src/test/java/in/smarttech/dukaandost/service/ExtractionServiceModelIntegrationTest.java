@@ -38,6 +38,24 @@ class ExtractionServiceModelIntegrationTest {
         return present("GEMINI_API_KEY");
     }
 
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', textBlock = """
+            HINDI    | शर्मा जी को 2 कार्टन तेल देना, कुल 2400 रुपये
+            HINGLISH | Sharma ji ko 2 carton tel dena, total 2400 rupaye
+            ENGLISH  | Send 2 cartons of oil to Sharma ji, total 2400 rupees
+            MARATHI  | शर्मा काकांना 2 कार्टन तेल द्या, एकूण 2400 रुपये
+            BENGALI  | শর্মা জিকে 2 কার্টন তেল দিন, মোট 2400 টাকা
+            TAMIL    | சர்மா ஜிக்கு 2 அட்டை எண்ணெய் கொடுக்கவும், மொத்தம் 2400 ரூபாய்
+            """)
+    void extractsTotalInEachLanguageWithoutGuessing(
+            in.smarttech.dukaandost.domain.NoteLanguage language, String note) {
+        ExtractionResult result = extractionService.extract(note, language);
+
+        assertThat(result.validationResult().normalizedOrder().total()).isEqualByComparingTo("2400");
+        assertThat(result.validationResult().normalizedOrder().customerName()).isNotNull();
+        assertThat(result.validationResult().normalizedOrder().preferredReminderLanguage()).isNull();
+    }
+
     @Test
     void extractsHashtagItemWithoutGuessingCustomer() {
         ExtractionResult result = extractionService.extract("#chini - 150");

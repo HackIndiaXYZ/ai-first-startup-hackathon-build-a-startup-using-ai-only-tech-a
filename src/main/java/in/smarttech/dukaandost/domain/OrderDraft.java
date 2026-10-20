@@ -51,8 +51,39 @@ public class OrderDraft {
     protected OrderDraft() {
     }
 
+    @Column(name = "owner_id")
+    private java.util.UUID ownerId;
+
+    public java.util.UUID getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(java.util.UUID ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    @jakarta.persistence.Column(name = "original_transcript", updatable = false)
+    private String originalTranscript;
+
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @jakarta.persistence.Column(name = "language_hint", length = 16)
+    private NoteLanguage languageHint;
+
+    public String getOriginalTranscript() {
+        return originalTranscript;
+    }
+
+    public NoteLanguage getLanguageHint() {
+        return languageHint;
+    }
+
+    public void setLanguageHint(NoteLanguage languageHint) {
+        this.languageHint = languageHint;
+    }
+
     public OrderDraft(String transcript, SourceType sourceType, DraftStatus status) {
         this.transcript = transcript;
+        this.originalTranscript = transcript;
         this.sourceType = sourceType;
         this.status = status;
     }

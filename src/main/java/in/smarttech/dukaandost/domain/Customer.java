@@ -27,7 +27,18 @@ public class Customer {
     @Column(name = "preferred_reminder_language", length = 32)
     private String preferredReminderLanguage;
 
+    @Column(name = "owner_id")
+    private UUID ownerId;
+
     protected Customer() {
+    }
+
+    public UUID getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(UUID ownerId) {
+        this.ownerId = ownerId;
     }
 
     public Customer(String name, String phone, String preferredReminderLanguage) {

@@ -11,7 +11,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrderDraftRepository extends JpaRepository<OrderDraft, UUID> {
 
+    Optional<OrderDraft> findByIdAndOwnerId(UUID id, UUID ownerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select draft from OrderDraft draft where draft.id = :id")
-    Optional<OrderDraft> findByIdForUpdate(@Param("id") UUID id);
+    @Query("select draft from OrderDraft draft where draft.id = :id and draft.ownerId = :ownerId")
+    Optional<OrderDraft> findByIdForUpdate(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
 }

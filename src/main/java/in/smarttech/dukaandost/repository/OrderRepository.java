@@ -15,9 +15,27 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     java.util.Optional<Order> findByOriginatingDraft_Id(UUID draftId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select order from Order order where order.id = :id")
-    java.util.Optional<Order> findByIdForUpdate(@Param("id") UUID id);
+    @Query("select o from Order o where o.id = :id and o.customer.ownerId = :ownerId")
+    java.util.Optional<Order> findByIdForUpdate(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
 
     @EntityGraph(attributePaths = {"customer", "payments"})
-    java.util.List<Order> findByStatus(in.smarttech.dukaandost.domain.OrderStatus status);
+    @Query("select o from Order o where o.customer.ownerId = :ownerId "
+            + "order by o.orderDate desc, o.createdAt desc")
+    java.util.List<Order> findAllByOwnerId(@Param("ownerId") UUID ownerId);
+
+    @EntityGraph(attributePaths = {"customer", "payments"})
+    @Query("select o from Order o where o.customer.id = :customerId and o.customer.ownerId = :ownerId "
+            + "order by o.orderDate desc, o.createdAt desc")
+    java.util.List<Order> findAllByCustomerIdAndOwnerId(
+            @Param("customerId") UUID customerId, @Param("ownerId") UUID ownerId);
+
+    @EntityGraph(attributePaths = {"customer", "payments"})
+    @Query("select o from Order o where o.id = :id and o.customer.ownerId = :ownerId")
+    java.util.Optional<Order> findByIdAndOwnerId(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
+
+    @EntityGraph(attributePaths = {"customer", "payments"})
+    @Query("select o from Order o where o.status = :status and o.customer.ownerId = :ownerId")
+    java.util.List<Order> findByStatusAndOwnerId(
+            @Param("status") in.smarttech.dukaandost.domain.OrderStatus status,
+            @Param("ownerId") UUID ownerId);
 }

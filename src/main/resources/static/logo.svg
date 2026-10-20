@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">Dukaan Dost</title>
+  <rect width="96" height="96" rx="24" fill="#245c4f"/>
+  <path d="M20 39 26 22h44l6 17v7a9 9 0 0 1-7 9v20H27V55a9 9 0 0 1-7-9v-7Z" fill="#f3c969"/>
+  <path d="M20 39h56M32 39v3a7 7 0 0 1-14 0v-3m28 0v3a7 7 0 0 1-14 0v-3m28 0v3a7 7 0 0 1-14 0v-3m28 0v3a7 7 0 0 1-14 0v-3" fill="none" stroke="#fff7e6" stroke-linecap="round" stroke-width="4"/>
+  <path d="M38 59h20v21H38z" fill="#fff7e6"/>
+  <path d="M43 66h10" stroke="#245c4f" stroke-linecap="round" stroke-width="3"/>
+</svg>

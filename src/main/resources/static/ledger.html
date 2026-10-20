@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Dukaan Dost | Customer ledger</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+    <p class="no-print"><a class="button-link" href="/">← Back to order desk</a></p>
+    <section class="card ledger-card">
+        <div class="section-heading">
+            <div>
+                <p class="step">CUSTOMER LEDGER</p>
+                <h1 id="customer-name">Customer account</h1>
+                <p id="customer-contact" class="quiet"></p>
+            </div>
+            <button id="print-ledger" class="secondary no-print" type="button" hidden>Print / Save as PDF</button>
+        </div>
+        <p id="ledger-status" class="empty-state" role="status">Loading customer ledger…</p>
+        <p id="ledger-error" class="message error" role="alert" hidden></p>
+        <div id="ledger-content" hidden>
+            <p class="ledger-outstanding">Current outstanding <strong id="current-outstanding"></strong></p>
+            <div class="ledger-table-wrap">
+                <table class="ledger-table">
+                    <thead><tr><th>Date</th><th>Entry</th><th>Details</th><th class="num">Amount</th><th class="num">Running balance</th></tr></thead>
+                    <tbody id="ledger-entries"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+<script src="/ledger.js"></script>
+</body>
+</html>

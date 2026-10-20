@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#245c4f">
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <title>Dukaan Dost | Create account</title>
+    <link rel="stylesheet" href="/styles.css?v=11">
+</head>
+<body>
+<main class="shell">
+    <header class="hero auth-hero">
+        <div class="auth-heading">
+            <img class="auth-logo" src="/logo.svg?v=2" alt="Dukaan Dost logo">
+            <div>
+                <p class="eyebrow">DUKAAN DOST</p>
+                <h1>Create your account</h1>
+                <p class="hero-copy">Your orders and payments stay private to your account.</p>
+            </div>
+        </div>
+    </header>
+
+    <div id="global-message" class="message" role="status" aria-live="polite" hidden></div>
+
+    <form id="signup-form" class="card" autocomplete="on">
+        <label for="name">Your name</label>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="200" required>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+        <label for="password">Password (8+ characters, upper/lowercase, number and symbol)</label>
+        <div class="password-field">
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <button class="secondary" type="button" data-toggle-password="password" aria-pressed="false">Show</button>
+        </div>
+        <label for="confirm-password">Confirm password</label>
+        <div class="password-field">
+            <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required>
+            <button class="secondary" type="button" data-toggle-password="confirm-password"
+                    aria-pressed="false">Show</button>
+        </div>
+        <label for="phone">Phone (optional contact only; not used for login or reset)</label>
+        <div class="form-actions">
+            <select id="phone-country" aria-label="Phone country code">
+                <option value="+91" selected>India +91</option>
+            </select>
+            <input id="phone" name="phone" type="tel" autocomplete="tel-national" inputmode="numeric"
+                   maxlength="15" placeholder="98765 43210">
+        </div>
+        <details>
+            <summary>Address (optional)</summary>
+            <label for="street">Street</label>
+            <input id="street" name="street" type="text" maxlength="200" autocomplete="street-address">
+            <label for="city">City</label>
+            <input id="city" name="city" type="text" maxlength="100" autocomplete="address-level2">
+            <label for="state">State</label>
+            <input id="state" name="state" type="text" maxlength="100" autocomplete="address-level1">
+            <label for="postal-code">PIN code</label>
+            <input id="postal-code" name="postalCode" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                   maxlength="6" autocomplete="postal-code">
+        </details>
+        <div class="form-actions">
+            <button id="submit" class="primary" type="submit">Create account</button>
+        </div>
+        <p class="quiet">Already registered? <a href="/login.html">Sign in</a></p>
+    </form>
+</main>
+<script src="/auth.js"></script>
+<script src="/password-toggle.js"></script>
+</body>
+</html>

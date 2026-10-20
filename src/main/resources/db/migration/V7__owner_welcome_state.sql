@@ -1,0 +1,2 @@
+ALTER TABLE owners
+    ADD COLUMN welcome_pending BOOLEAN NOT NULL DEFAULT FALSE;

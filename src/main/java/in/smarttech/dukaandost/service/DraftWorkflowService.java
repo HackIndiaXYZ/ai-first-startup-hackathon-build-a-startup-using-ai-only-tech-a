@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import in.smarttech.dukaandost.domain.Customer;
 import in.smarttech.dukaandost.domain.DraftStatus;
 import in.smarttech.dukaandost.domain.Order;
+import in.smarttech.dukaandost.domain.NoteLanguage;
 import in.smarttech.dukaandost.domain.OrderDraft;
 import in.smarttech.dukaandost.domain.OrderItem;
 import in.smarttech.dukaandost.domain.OrderStatus;
@@ -16,6 +17,7 @@ import in.smarttech.dukaandost.repository.CustomerRepository;
 import in.smarttech.dukaandost.repository.OrderDraftRepository;
 import in.smarttech.dukaandost.repository.OrderRepository;
 import in.smarttech.dukaandost.repository.PaymentRepository;
+import in.smarttech.dukaandost.security.CurrentOwner;
 import in.smarttech.dukaandost.validation.ExtractedOrder;
 import in.smarttech.dukaandost.validation.ValidationIssue;
 import java.time.ZoneId;
@@ -26,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -40,6 +43,8 @@ public class DraftWorkflowService {
     private final ExtractionService extractionService;
     private final ValidationService validationService;
     private final ObjectMapper objectMapper;
+    private final CurrentOwner currentOwner;
+    private NotificationService notificationService;
 
     public DraftWorkflowService(
             OrderDraftRepository draftRepository,
@@ -48,7 +53,9 @@ public class DraftWorkflowService {
             PaymentRepository paymentRepository,
             ExtractionService extractionService,
             ValidationService validationService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            CurrentOwner currentOwner) {
+        this.currentOwner = Objects.requireNonNull(currentOwner);
         this.draftRepository = Objects.requireNonNull(draftRepository);
         this.orderRepository = Objects.requireNonNull(orderRepository);
         this.customerRepository = Objects.requireNonNull(customerRepository);
@@ -58,26 +65,43 @@ public class DraftWorkflowService {
         this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
+    @Autowired(required = false)
+    void setNotificationService(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
+
     private static final Logger log = LoggerFactory.getLogger(DraftWorkflowService.class);
     private static final int MAX_LOGGED_MESSAGE = 200;
 
     public OrderDraft create(String transcript) {
+        return create(transcript, null);
+    }
+
+    public OrderDraft create(String transcript, NoteLanguage language) {
         requireTranscript(transcript);
-        OrderDraft draft = draftRepository.save(new OrderDraft(transcript, SourceType.TEXT, DraftStatus.PROCESSING));
+        OrderDraft draft = new OrderDraft(transcript, SourceType.TEXT, DraftStatus.PROCESSING);
+        draft.setLanguageHint(language == null ? NoteLanguage.AUTO : language);
+        draft.setOwnerId(currentOwner.id());
+        draft = draftRepository.save(draft);
         return extractInto(draft);
     }
 
     @Transactional(readOnly = true)
     public OrderDraft get(UUID id) {
-        return draftRepository.findById(id)
-                .orElseThrow(() -> notFound("Draft not found: " + id));
+        return findOwned(id);
     }
 
     public OrderDraft update(UUID id, String transcript) {
+        return update(id, transcript, null);
+    }
+
+    public OrderDraft update(UUID id, String transcript, NoteLanguage language) {
         requireTranscript(transcript);
-        OrderDraft draft = draftRepository.findById(id)
-                .orElseThrow(() -> notFound("Draft not found: " + id));
+        OrderDraft draft = findOwned(id);
         ensureEditable(draft);
+        if (language != null) {
+            draft.setLanguageHint(language);
+        }
         draft.setTranscript(transcript);
         draft.setStatus(DraftStatus.PROCESSING);
         draftRepository.save(draft);
@@ -85,12 +109,18 @@ public class DraftWorkflowService {
     }
 
     public OrderDraft retryExtraction(UUID id, String editedTranscript) {
-        OrderDraft draft = draftRepository.findById(id)
-                .orElseThrow(() -> notFound("Draft not found: " + id));
+        return retryExtraction(id, editedTranscript, null);
+    }
+
+    public OrderDraft retryExtraction(UUID id, String editedTranscript, NoteLanguage language) {
+        OrderDraft draft = findOwned(id);
         DraftStatus status = draft.getStatus();
         if (status != DraftStatus.EXTRACTION_FAILED && status != DraftStatus.READY
                 && status != DraftStatus.NEEDS_REVIEW) {
             throw conflict("Extraction can only be rerun for failed or unconfirmed drafts.");
+        }
+        if (language != null) {
+            draft.setLanguageHint(language);
         }
         if (editedTranscript != null) {
             requireTranscript(editedTranscript);
@@ -103,7 +133,8 @@ public class DraftWorkflowService {
 
     @Transactional
     public ConfirmationResult confirm(UUID id, boolean acknowledgedReview) {
-        OrderDraft draft = draftRepository.findByIdForUpdate(id)
+        UUID ownerId = currentOwner.id();
+        OrderDraft draft = draftRepository.findByIdForUpdate(id, ownerId)
                 .orElseThrow(() -> notFound("Draft not found: " + id));
         Order existing = orderRepository.findByOriginatingDraft_Id(id).orElse(null);
         if (existing != null) {
@@ -142,10 +173,13 @@ public class DraftWorkflowService {
             throw unprocessable("A currency is required before confirmation.");
         }
 
-        Customer customer = customerRepository.findFirstByNameIgnoreCase(orderData.customerName())
-                .orElseGet(() -> customerRepository.save(new Customer(
-                        orderData.customerName(), orderData.customerPhone(),
-                        orderData.preferredReminderLanguage())));
+        Customer customer = customerRepository.findFirstByOwnerIdAndNameIgnoreCase(ownerId, orderData.customerName())
+                .orElseGet(() -> {
+                    Customer created = new Customer(orderData.customerName(), orderData.customerPhone(),
+                            orderData.preferredReminderLanguage());
+                    created.setOwnerId(ownerId);
+                    return customerRepository.save(created);
+                });
         if (customer.getPhone() == null && orderData.customerPhone() != null) {
             customer.setPhone(orderData.customerPhone());
         }
@@ -169,20 +203,25 @@ public class DraftWorkflowService {
                             .orElseThrow(() -> exception));
         }
         if (orderData.advanceAmount() != null) {
-            paymentRepository.save(new Payment(order, orderData.advanceAmount(),
+            Payment initialPayment = paymentRepository.save(new Payment(order, orderData.advanceAmount(),
                     orderData.advancePaidAt() == null ? null
                             : orderData.advancePaidAt().atStartOfDay(ZoneId.of("Asia/Kolkata")).toInstant(),
                     orderData.advanceNote()));
+            if (notificationService != null) {
+                notificationService.paymentReceived(ownerId, order, initialPayment);
+            }
         }
         draft.setStatus(DraftStatus.CONFIRMED);
         draftRepository.save(draft);
+        if (notificationService != null) {
+            notificationService.orderConfirmed(ownerId, order);
+        }
         return new ConfirmationResult(draft, order);
     }
 
     @Transactional
     public OrderDraft discard(UUID id) {
-        OrderDraft draft = draftRepository.findById(id)
-                .orElseThrow(() -> notFound("Draft not found: " + id));
+        OrderDraft draft = findOwned(id);
         if (orderRepository.findByOriginatingDraft_Id(id).isPresent()
                 || draft.getStatus() == DraftStatus.CONFIRMED) {
             throw conflict("Confirmed orders cannot be discarded.");
@@ -191,9 +230,17 @@ public class DraftWorkflowService {
         return draftRepository.save(draft);
     }
 
+    private OrderDraft findOwned(UUID id) {
+        return draftRepository.findByIdAndOwnerId(id, currentOwner.id())
+                .orElseThrow(() -> notFound("Draft not found: " + id));
+    }
+
     private OrderDraft extractInto(OrderDraft draft) {
         try {
-            ExtractionResult result = extractionService.extract(draft.getTranscript());
+            NoteLanguage hint = draft.getLanguageHint();
+            ExtractionResult result = hint == null || hint == NoteLanguage.AUTO
+                    ? extractionService.extract(draft.getTranscript())
+                    : extractionService.extract(draft.getTranscript(), hint);
             draft.setExtractionJson(toExtractionJson(result));
             draft.setReviewNotes(String.join("\n", result.reviewNotes()));
             draft.setStatus(result.reviewRequired() ? DraftStatus.NEEDS_REVIEW : DraftStatus.READY);

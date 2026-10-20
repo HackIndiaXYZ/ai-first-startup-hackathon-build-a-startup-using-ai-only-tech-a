@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "sqlproj: Build asish",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"/Applications/TECH PROJECTS/ai-first-startup-hackathon-build-a-startup-using-ai-only-tech-a/asish/asish.sqlproj"
+			],
+			"problemMatcher": "$sqlproj-problem-matcher",
+			"isBackground": true,
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "Builds the asish SQL project"
+		}
+	]
+}

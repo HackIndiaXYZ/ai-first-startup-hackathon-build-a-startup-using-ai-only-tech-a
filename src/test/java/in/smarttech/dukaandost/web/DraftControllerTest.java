@@ -42,7 +42,7 @@ class DraftControllerTest {
     @Test
     void createsDraftThroughPostEndpoint() throws Exception {
         OrderDraft draft = new OrderDraft("Asha ka order", SourceType.TEXT, DraftStatus.READY);
-        when(workflowService.create("Asha ka order")).thenReturn(draft);
+        when(workflowService.create("Asha ka order", null)).thenReturn(draft);
 
         mockMvc.perform(post("/api/drafts")
                         .contentType("application/json")
@@ -51,7 +51,7 @@ class DraftControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        verify(workflowService).create("Asha ka order");
+        verify(workflowService).create("Asha ka order", null);
     }
 
     @Test
@@ -79,7 +79,7 @@ class DraftControllerTest {
     @Test
     void returnsSavedDraftIdAndFriendlyErrorWhenExtractionFails() throws Exception {
         UUID draftId = UUID.randomUUID();
-        when(workflowService.create("bad provider input"))
+        when(workflowService.create("bad provider input", null))
                 .thenThrow(new ExtractionFailedException(draftId));
 
         mockMvc = MockMvcBuilders.standaloneSetup(new DraftController(workflowService, objectMapper))
@@ -100,7 +100,7 @@ class DraftControllerTest {
     @Test
     void retryEndpointReturns502WithDraftIdWhenExtractionFailsAgain() throws Exception {
         UUID draftId = UUID.randomUUID();
-        when(workflowService.retryExtraction(draftId, null))
+        when(workflowService.retryExtraction(draftId, null, null))
                 .thenThrow(new ExtractionFailedException(draftId));
 
         mockMvc = MockMvcBuilders.standaloneSetup(new DraftController(workflowService, objectMapper))
@@ -109,5 +109,30 @@ class DraftControllerTest {
         mockMvc.perform(post("/api/drafts/" + draftId + "/extract"))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.draftId").value(draftId.toString()));
+    }
+
+    @Test
+    void passesLanguageChoiceAndReturnsOriginalTranscript() throws Exception {
+        OrderDraft draft = new OrderDraft("शर्मा जी 500", SourceType.TEXT, DraftStatus.READY);
+        draft.setLanguageHint(in.smarttech.dukaandost.domain.NoteLanguage.HINDI);
+        when(workflowService.create("शर्मा जी 500", in.smarttech.dukaandost.domain.NoteLanguage.HINDI))
+                .thenReturn(draft);
+
+        mockMvc.perform(post("/api/drafts")
+                        .contentType("application/json; charset=UTF-8")
+                        .content("{\"transcript\":\"शर्मा जी 500\",\"language\":\"HINDI\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.language").value("HINDI"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.originalTranscript").value("शर्मा जी 500"));
+    }
+
+    @Test
+    void rejectsUnsupportedLanguageChoice() throws Exception {
+        mockMvc.perform(post("/api/drafts")
+                        .contentType("application/json")
+                        .content("{\"transcript\":\"x\",\"language\":\"KLINGON\"}"))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Dukaan Dost | Receipt</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .receipt table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
+        .receipt th, .receipt td { padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left; font-size: .9rem; }
+        .receipt .num { text-align: right; white-space: nowrap; }
+        .receipt .totals p { display: flex; justify-content: space-between; margin: 6px 0; }
+        .receipt .remaining { font-size: 1.15rem; font-weight: 700; }
+        @media print {
+            body { background: #fff; }
+            .no-print { display: none !important; }
+            .card { box-shadow: none; border: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+<main class="shell receipt">
+    <p class="no-print"><a href="/">← Back</a> <button id="print" class="secondary" type="button" hidden>Print receipt</button></p>
+    <div id="status" class="empty-state">Loading receipt…</div>
+    <section id="receipt" class="card" hidden>
+        <p class="eyebrow">DUKAAN DOST</p>
+        <h2>Order receipt</h2>
+        <p id="meta" class="quiet"></p>
+        <h3>Items</h3>
+        <table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+            <tbody id="items"></tbody></table>
+        <h3>Payments</h3>
+        <table><thead><tr><th>Date</th><th>Method</th><th class="num">Amount</th></tr></thead>
+            <tbody id="payments"></tbody></table>
+        <div class="totals">
+            <p><span>Order total</span><strong id="total"></strong></p>
+            <p><span>Total paid</span><strong id="paid"></strong></p>
+            <p class="remaining"><span>Remaining balance</span><strong id="balance"></strong></p>
+        </div>
+        <p class="quiet">This is a record of payments noted by the shop. It is not a payment request.</p>
+    </section>
+</main>
+<script src="/receipt.js"></script>
+</body>
+</html>

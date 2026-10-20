@@ -41,14 +41,27 @@ public class Payment {
     @Column(columnDefinition = "text")
     private String note;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(length = 20)
+    private PaymentMethod method;
+
     protected Payment() {
     }
 
     public Payment(Order order, BigDecimal amount, Instant paidAt, String note) {
+        this(order, amount, paidAt, note, null);
+    }
+
+    public Payment(Order order, BigDecimal amount, Instant paidAt, String note, PaymentMethod method) {
         this.order = order;
         this.amount = amount;
         this.paidAt = paidAt;
         this.note = note;
+        this.method = method;
+    }
+
+    public PaymentMethod getMethod() {
+        return method;
     }
 
     @PrePersist
